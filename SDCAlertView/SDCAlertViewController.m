@@ -117,10 +117,7 @@ static CGFloat			const SDCAlertViewSpringAnimationVelocity = 0;
 	[self changeActiveWindowIfNeeded];
 	
 	if (animated) {
-		[CATransaction begin];
-		[CATransaction setCompletionBlock:completionHandler];
-		[self applyAnimationsForShowingAlert:alert];
-		[CATransaction commit];
+		[self animateShowingAlert:alert completionHandler:completionHandler];
 	} else {
 		if (completionHandler)
 			completionHandler();
@@ -135,14 +132,12 @@ static CGFloat			const SDCAlertViewSpringAnimationVelocity = 0;
 		[alert removeFromSuperview];
 		[self changeActiveWindowIfNeeded];
 		
-		completionHandler();
+		if (completionHandler)
+			completionHandler();
 	};
 	
 	if (animated) {
-		[CATransaction begin];
-		[CATransaction setCompletionBlock:dismissBlock];
-		[self applyAnimationsForDismissingAlert:alert];
-		[CATransaction commit];
+		[self animateHidingAlert:alert completionHandler:dismissBlock];
 	} else {
 		dismissBlock();
 	}
@@ -154,15 +149,18 @@ static CGFloat			const SDCAlertViewSpringAnimationVelocity = 0;
 
 #pragma mark - Animations
 
-- (RBBSpringAnimation *)springAnimationForKey:(NSString *)key {
-	RBBSpringAnimation *animation = [[RBBSpringAnimation alloc] init];
-	animation.duration = SDCAlertViewSpringAnimationDuration;
-	animation.damping = SDCAlertViewSpringAnimationDamping;
-	animation.mass = SDCAlertViewSpringAnimationMass;
-	animation.stiffness = SDCAlertViewSpringAnimationStiffness;
-	animation.velocity = SDCAlertViewSpringAnimationVelocity;
-	
-	return animation;
+- (void)animateShowingAlert:(SDCAlertView *)alert completionHandler:(void(^)(void))completionHandler {
+	[CATransaction begin];
+	[CATransaction setCompletionBlock:completionHandler];
+	[self applyAnimationsForShowingAlert:alert];
+	[CATransaction commit];
+}
+
+- (void)animateHidingAlert:(SDCAlertView *)alert completionHandler:(void(^)(void))completionHandler {
+	[CATransaction begin];
+	[CATransaction setCompletionBlock:completionHandler];
+	[self applyAnimationsForDismissingAlert:alert];
+	[CATransaction commit];
 }
 
 - (void)addTransformAnimationToAlert:(SDCAlertView *)alert transformingFrom:(CATransform3D)transformFrom to:(CATransform3D)transformTo {
@@ -214,6 +212,17 @@ static CGFloat			const SDCAlertViewSpringAnimationVelocity = 0;
 		self.backgroundColorView.layer.opacity = 0;
 		[self.backgroundColorView.layer addAnimation:opacityAnimation forKey:@"opacity"];
 	}
+}
+
+- (RBBSpringAnimation *)springAnimationForKey:(NSString *)key {
+	RBBSpringAnimation *animation = [[RBBSpringAnimation alloc] init];
+	animation.duration = SDCAlertViewSpringAnimationDuration;
+	animation.damping = SDCAlertViewSpringAnimationDamping;
+	animation.mass = SDCAlertViewSpringAnimationMass;
+	animation.stiffness = SDCAlertViewSpringAnimationStiffness;
+	animation.velocity = SDCAlertViewSpringAnimationVelocity;
+	
+	return animation;
 }
 
 - (void)dealloc {
