@@ -27,10 +27,13 @@ static CGFloat			const SDCAlertViewSpringAnimationVelocity = 0;
 + (UIWindow *)sdc_alertWindow;
 @end
 
-@interface SDCAlertView (SDCAlertViewSubviews)
+@interface SDCAlertView (SDCAlertViewPrivate)
 @property (nonatomic, strong) SDCAlertViewBackgroundView *alertBackgroundView;
 @property (nonatomic, strong) SDCAlertViewContentView *alertContentView;
 @property (nonatomic, strong) UIToolbar *toolbar;
+
+- (void)willBePresented;
+- (void)didGetPresented;
 @end
 
 @interface SDCAlertViewController ()
@@ -110,17 +113,20 @@ static CGFloat			const SDCAlertViewSpringAnimationVelocity = 0;
 	}
 }
 
-- (void)showAlert:(SDCAlertView *)alert animated:(BOOL)animated completion:(void (^)(void))completionHandler {
+- (void)showAlert:(SDCAlertView *)alert animated:(BOOL)animated {
 	[self.alertViews addObject:alert];
 	[self.rootView addSubview:alert];
 	
 	[self changeActiveWindowIfNeeded];
 	
+	[alert willBePresented];
+	
 	if (animated) {
-		[self animateShowingAlert:alert completionHandler:completionHandler];
+		[self animateShowingAlert:alert completionHandler:^{
+			[alert didGetPresented];
+		}];
 	} else {
-		if (completionHandler)
-			completionHandler();
+		[alert didGetPresented];
 	}
 }
 
@@ -136,11 +142,10 @@ static CGFloat			const SDCAlertViewSpringAnimationVelocity = 0;
 			completionHandler();
 	};
 	
-	if (animated) {
+	if (animated)
 		[self animateHidingAlert:alert completionHandler:dismissBlock];
-	} else {
+	else
 		dismissBlock();
-	}
 }
 
 - (SDCAlertView *)currentAlert {

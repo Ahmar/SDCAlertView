@@ -108,16 +108,19 @@ static NSInteger const SDCAlertViewDefaultFirstButtonIndex = 0;
 	return [self.alertViewController currentAlert] == self;
 }
 
-- (void)show {
-	[self configureForShowing];
-	
+- (void)willBePresented {
 	if ([self.delegate respondsToSelector:@selector(willPresentAlertView:)])
 		[self.delegate willPresentAlertView:self];
-	
-	[self.alertViewController showAlert:self animated:YES completion:^{
-		if ([self.delegate respondsToSelector:@selector(didPresentAlertView:)])
-			[self.delegate didPresentAlertView:self];
-	}];
+}
+
+- (void)didGetPresented {
+	if ([self.delegate respondsToSelector:@selector(didPresentAlertView:)])
+		[self.delegate didPresentAlertView:self];
+}
+
+- (void)show {
+	[self configureForShowing];
+	[self.alertViewController showAlert:self animated:YES];
 }
 
 - (void)configureForShowing {
