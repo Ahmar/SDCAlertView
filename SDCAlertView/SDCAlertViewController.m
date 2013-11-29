@@ -98,15 +98,23 @@ static CGFloat			const SDCAlertViewSpringAnimationVelocity = 0;
 	self.rootView.frame = self.window.frame;
 }
 
+- (void)changeActiveWindowIfNeeded {
+	if ([self.alertViews count] > 0 && [[UIApplication sharedApplication] keyWindow] != self.window) {
+		[[[UIApplication sharedApplication] keyWindow] setTintAdjustmentMode:UIViewTintAdjustmentModeDimmed];
+		[self.window makeKeyAndVisible];
+		[self.window bringSubviewToFront:self.rootView];
+	} else if ([self.alertViews count] == 0 && [[UIApplication sharedApplication] keyWindow] != self.previousWindow) {
+		self.previousWindow.tintAdjustmentMode = UIViewTintAdjustmentModeAutomatic;
+		[self.previousWindow makeKeyAndVisible];
+		self.window = nil;
+	}
+}
+
 - (void)showAlert:(SDCAlertView *)alert animated:(BOOL)animated completion:(void (^)(void))completionHandler {
 	[self.alertViews addObject:alert];
 	[self.rootView addSubview:alert];
 	
-	if ([[UIApplication sharedApplication] keyWindow] != self.window) {
-		[[[UIApplication sharedApplication] keyWindow] setTintAdjustmentMode:UIViewTintAdjustmentModeDimmed];
-		[self.window makeKeyAndVisible];
-		[self.window bringSubviewToFront:self.rootView];
-	}
+	[self changeActiveWindowIfNeeded];
 	
 	if (animated) {
 		[CATransaction begin];
@@ -121,19 +129,11 @@ static CGFloat			const SDCAlertViewSpringAnimationVelocity = 0;
 
 - (void)dismissAlert:(SDCAlertView *)alert animated:(BOOL)animated completion:(void (^)(void))completionHandler {
 	[alert resignFirstResponder];
+	[self.alertViews removeObject:alert];
 	
-	BOOL isLastAlert = [self.alertViews count] == 1;
-	if (isLastAlert)
-		self.previousWindow.tintAdjustmentMode = UIViewTintAdjustmentModeAutomatic;
-
 	void (^dismissBlock)() = ^{
 		[alert removeFromSuperview];
-		[self.alertViews removeObject:alert];
-		
-		if (isLastAlert) {
-			[self.previousWindow makeKeyAndVisible];
-			self.window = nil;
-		}
+		[self changeActiveWindowIfNeeded];
 		
 		completionHandler();
 	};
