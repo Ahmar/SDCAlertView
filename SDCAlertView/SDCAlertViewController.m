@@ -27,6 +27,11 @@ static CGFloat			const SDCAlertViewSpringAnimationVelocity = 0;
 + (UIWindow *)sdc_alertWindow;
 @end
 
+@interface RBBSpringAnimation (SDCAlertView)
++ (RBBSpringAnimation *)sdc_alertViewSpringAnimationForKey:(NSString *)key;
+@end
+
+
 @interface SDCAlertView (SDCAlertViewPrivate)
 @property (nonatomic, strong) SDCAlertViewBackgroundView *alertBackgroundView;
 @property (nonatomic, strong) SDCAlertViewContentView *alertContentView;
@@ -122,7 +127,18 @@ static CGFloat			const SDCAlertViewSpringAnimationVelocity = 0;
 	[alert willBePresented];
 	
 	if (animated) {
-		[self animateShowingAlert:alert completionHandler:^{
+		[self animateUsingBlock:^{
+			CATransform3D transformFrom = CATransform3DMakeScale(SDCAlertViewShowingAnimationScale, SDCAlertViewShowingAnimationScale, 1);
+			CATransform3D transformTo = CATransform3DMakeScale(1, 1, 1);
+			[self animateAlertTransform:alert from:transformFrom to:transformTo];
+			
+			RBBSpringAnimation *opacityAnimation = [self animateAlertOpacity:alert from:0 to:1];
+			
+			if ([self.alertViews count] == 1) {
+				self.backgroundColorView.layer.opacity = 1;
+				[self.backgroundColorView.layer addAnimation:opacityAnimation forKey:@"opacity"];
+			}
+		} completionHandler:^{
 			[alert didGetPresented];
 		}];
 	} else {
@@ -142,10 +158,22 @@ static CGFloat			const SDCAlertViewSpringAnimationVelocity = 0;
 			completionHandler();
 	};
 	
-	if (animated)
-		[self animateHidingAlert:alert completionHandler:dismissBlock];
-	else
+	if (animated) {
+		[self animateUsingBlock:^{
+			CATransform3D transformFrom = CATransform3DMakeScale(1, 1, 1);
+			CATransform3D transformTo = CATransform3DMakeScale(SDCAlertViewDismissingAnimationScale, SDCAlertViewDismissingAnimationScale, 1);
+			
+			[self animateAlertTransform:alert from:transformFrom to:transformTo];
+			RBBSpringAnimation *opacityAnimation = [self animateAlertOpacity:alert from:1 to:0];
+			
+			if ([self.alertViews count] == 0) {
+				self.backgroundColorView.layer.opacity = 0;
+				[self.backgroundColorView.layer addAnimation:opacityAnimation forKey:@"opacity"];
+			}
+		} completionHandler:dismissBlock];
+	} else {
 		dismissBlock();
+	}
 }
 
 - (SDCAlertView *)currentAlert {
@@ -154,72 +182,49 @@ static CGFloat			const SDCAlertViewSpringAnimationVelocity = 0;
 
 #pragma mark - Animations
 
-- (void)animateShowingAlert:(SDCAlertView *)alert completionHandler:(void(^)(void))completionHandler {
+- (void)animateUsingBlock:(void(^)(void))animations completionHandler:(void(^)(void))completionHandler {
 	[CATransaction begin];
 	[CATransaction setCompletionBlock:completionHandler];
-	[self applyAnimationsForShowingAlert:alert];
+	animations();
 	[CATransaction commit];
 }
 
-- (void)animateHidingAlert:(SDCAlertView *)alert completionHandler:(void(^)(void))completionHandler {
-	[CATransaction begin];
-	[CATransaction setCompletionBlock:completionHandler];
-	[self applyAnimationsForDismissingAlert:alert];
-	[CATransaction commit];
-}
-
-- (void)addTransformAnimationToAlert:(SDCAlertView *)alert transformingFrom:(CATransform3D)transformFrom to:(CATransform3D)transformTo {
-	RBBSpringAnimation *transformAnimation = [self springAnimationForKey:@"transform"];
+- (RBBSpringAnimation *)animateAlertTransform:(SDCAlertView *)alert from:(CATransform3D)transformFrom to:(CATransform3D)transformTo {
+	RBBSpringAnimation *transformAnimation = [RBBSpringAnimation sdc_alertViewSpringAnimationForKey:@"transform"];
 	transformAnimation.fromValue = [NSValue valueWithCATransform3D:transformFrom];
 	transformAnimation.toValue = [NSValue valueWithCATransform3D:transformTo];
 	
 	alert.layer.transform = transformTo;
 	[alert.layer addAnimation:transformAnimation forKey:@"transform"];
+	
+	return transformAnimation;
 }
 
-- (void)applyAnimationsForShowingAlert:(SDCAlertView *)alert {
-	CATransform3D transformFrom = CATransform3DMakeScale(SDCAlertViewShowingAnimationScale, SDCAlertViewShowingAnimationScale, 1);
-	CATransform3D transformTo = CATransform3DMakeScale(1, 1, 1);
-	[self addTransformAnimationToAlert:alert transformingFrom:transformFrom to:transformTo];
+- (RBBSpringAnimation *)animateAlertOpacity:(SDCAlertView *)alert from:(CGFloat)fromValue to:(CGFloat)toValue {
+	RBBSpringAnimation *opacityAnimation = [RBBSpringAnimation sdc_alertViewSpringAnimationForKey:@"opacity"];
+	opacityAnimation.fromValue = @(fromValue);
+	opacityAnimation.toValue = @(toValue);
 	
-	// Create opacity animation
-	RBBSpringAnimation *opacityAnimation = [self springAnimationForKey:@"opacity"];
-	opacityAnimation.fromValue = @0;
-	opacityAnimation.toValue = @1;
+	alert.alertBackgroundView.layer.opacity = toValue;
+	alert.alertContentView.layer.opacity = toValue;
+	alert.toolbar.layer.opacity = toValue;
+	
 	[alert.alertBackgroundView.layer addAnimation:opacityAnimation forKey:@"opacity"];
 	[alert.alertContentView.layer addAnimation:opacityAnimation forKey:@"opacity"];
 	[alert.toolbar.layer addAnimation:opacityAnimation forKey:@"opacity"];
 	
-	// If we're animating the first alert in the queue, also animate the dimmed background
-	if ([self.alertViews count] == 1)
-		[self.backgroundColorView.layer addAnimation:opacityAnimation forKey:@"opacity"];
+	return opacityAnimation;
 }
 
-- (void)applyAnimationsForDismissingAlert:(SDCAlertView *)alert {
-	CATransform3D transformFrom = CATransform3DMakeScale(1, 1, 1);
-	CATransform3D transformTo = CATransform3DMakeScale(SDCAlertViewDismissingAnimationScale, SDCAlertViewDismissingAnimationScale, 1);
-	[self addTransformAnimationToAlert:alert transformingFrom:transformFrom to:transformTo];
-	
-	RBBSpringAnimation *opacityAnimation = [self springAnimationForKey:@"opacity"];
-	opacityAnimation.fromValue = @1;
-	opacityAnimation.toValue = @0;
-	
-	alert.alertBackgroundView.layer.opacity = 0;
-	alert.alertContentView.layer.opacity = 0;
-	alert.toolbar.layer.opacity = 0;
-	
-	[alert.alertBackgroundView.layer addAnimation:opacityAnimation forKey:@"opacity"];
-	[alert.alertContentView.layer addAnimation:opacityAnimation forKey:@"opacity"];
-	[alert.toolbar.layer addAnimation:opacityAnimation forKey:@"opacity"];
-
-	// If the last alert is being dismissed, also animate the dimmed background back to normal
-	if ([self.alertViews count] == 1) {
-		self.backgroundColorView.layer.opacity = 0;
-		[self.backgroundColorView.layer addAnimation:opacityAnimation forKey:@"opacity"];
-	}
+- (void)dealloc {
+	[[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
-- (RBBSpringAnimation *)springAnimationForKey:(NSString *)key {
+@end
+
+@implementation RBBSpringAnimation (SDCAlertView)
+
++ (RBBSpringAnimation *)sdc_alertViewSpringAnimationForKey:(NSString *)key {
 	RBBSpringAnimation *animation = [[RBBSpringAnimation alloc] init];
 	animation.duration = SDCAlertViewSpringAnimationDuration;
 	animation.damping = SDCAlertViewSpringAnimationDamping;
@@ -228,10 +233,6 @@ static CGFloat			const SDCAlertViewSpringAnimationVelocity = 0;
 	animation.velocity = SDCAlertViewSpringAnimationVelocity;
 	
 	return animation;
-}
-
-- (void)dealloc {
-	[[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
 @end
