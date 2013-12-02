@@ -13,7 +13,7 @@
 #import "SDCAlertView.h"
 #import "UIView+SDCAutoLayout.h"
 
-@interface SDCViewController () <UITableViewDelegate>
+@interface SDCViewController () <UITableViewDelegate, UIAlertViewDelegate>
 
 @end
 
@@ -23,9 +23,15 @@
 	if (indexPath.section == 0) {
 		[[[UIAlertView alloc] initWithTitle:@"Title"
 									message:@"This is a message"
-								   delegate:nil
+								   delegate:self
 						  cancelButtonTitle:@"Cancel"
 						  otherButtonTitles:@"OK", nil] show];
+		[[[UIAlertView alloc] initWithTitle:@"Title"
+									message:@"This is a message"
+								   delegate:self
+						  cancelButtonTitle:@"Cancel"
+						  otherButtonTitles:@"OK", nil] show];
+		
 	} else if (indexPath.section == 1) {
 		if (indexPath.row == 0) {
 			[[[SDCAlertView alloc] initWithTitle:@"Title"
@@ -33,6 +39,8 @@
 										delegate:nil
 							   cancelButtonTitle:@"Cancel"
 							   otherButtonTitles:@"OK", nil] show];
+			SDCAlertView *alert2 = [[SDCAlertView alloc] initWithTitle:@"Title" message:nil delegate:self cancelButtonTitle:@"Cancel" otherButtonTitles:nil, nil];
+			[alert2 performSelector:@selector(show) withObject:nil afterDelay:3];
 		} else if (indexPath.row == 1) {
 			[[[SDCAlertView alloc] initWithTitle:@"Title"
 										 message:@"This is a message"
@@ -131,6 +139,11 @@
 	
 	[tableView deselectRowAtIndexPath:indexPath animated:YES];
 }
+
+- (void)didPresentAlertView:(UIAlertView *)alertView {
+	
+}
+
 
 - (void)updateProgressView:(NSTimer *)timer {
 	UIProgressView *progressView = [timer userInfo];

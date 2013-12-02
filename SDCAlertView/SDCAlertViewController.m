@@ -124,6 +124,15 @@ static CGFloat			const SDCAlertViewSpringAnimationVelocity = 0;
 	
 	[self changeActiveWindowIfNeeded];
 	
+	if ([self.alertViews count] > 1) {
+		SDCAlertView *previousAlert = self.alertViews[0];
+		CATransform3D transformFrom = CATransform3DMakeScale(1, 1, 1);
+		CATransform3D transformTo = CATransform3DMakeScale(SDCAlertViewDismissingAnimationScale, SDCAlertViewDismissingAnimationScale, 1);
+		
+		[self animateAlertTransform:previousAlert from:transformFrom to:transformTo];
+		[self animateAlertOpacity:previousAlert from:1 to:0];
+	}
+	
 	[alert willBePresented];
 	
 	if (animated) {
@@ -169,6 +178,13 @@ static CGFloat			const SDCAlertViewSpringAnimationVelocity = 0;
 			if ([self.alertViews count] == 0) {
 				self.backgroundColorView.layer.opacity = 0;
 				[self.backgroundColorView.layer addAnimation:opacityAnimation forKey:@"opacity"];
+			} else {
+				[[self currentAlert] setNeedsUpdateConstraints];
+				CATransform3D transformFrom = CATransform3DMakeScale(SDCAlertViewDismissingAnimationScale, SDCAlertViewDismissingAnimationScale, 1);
+				CATransform3D transformTo = CATransform3DMakeScale(1, 1, 1);
+				[self animateAlertTransform:[self currentAlert] from:transformFrom to:transformTo];
+				
+				[self animateAlertOpacity:[self currentAlert] from:0 to:1];
 			}
 		} completionHandler:dismissBlock];
 	} else {
